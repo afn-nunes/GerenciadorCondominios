@@ -1,5 +1,5 @@
-﻿function AprovarUsuarios(usuarioId, nome) {
-    const url = "/Usuarios/AprovarUsuarios";
+﻿function AprovarUsuario(usuarioId, nome) {
+    const url = "/Usuarios/AprovarUsuario";
     $.ajax({
         method: 'POST',
         url: url,
@@ -33,7 +33,7 @@
     })
 }
 
-function ReprovarUsuarios(usuarioId) {
+function ReprovarUsuario(usuarioId) {
     const url = "/Usuarios/ReprovarUsuario";
     $.ajax({
         method: 'POST',

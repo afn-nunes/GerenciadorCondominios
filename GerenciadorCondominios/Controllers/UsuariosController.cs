@@ -174,7 +174,7 @@ namespace GerenciadorCondominios.Controllers
             return View(nome);
         }
 
-        public async Task<JsonResult> AprovarUsuarios(string usuarioId)
+        public async Task<JsonResult> AprovarUsuario(string usuarioId)
         {
             Usuario usuario = await _usuarioRepositorio.PegarPeloId(usuarioId);
             usuario.Status = StatusConta.Aprovado;
