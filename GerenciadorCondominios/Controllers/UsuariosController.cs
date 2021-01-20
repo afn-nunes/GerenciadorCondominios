@@ -16,11 +16,16 @@ namespace GerenciadorCondominios.Controllers
     public class UsuariosController : Controller
     {
         private readonly IUsuarioRepositorio _usuarioRepositorio;
+        private readonly IFuncaoRepositorio _funcaoRepositorio;
         private readonly IWebHostEnvironment _webHostEnvironment;
 
-        public UsuariosController(IUsuarioRepositorio usuarioRepositorio, IWebHostEnvironment webHostEnvironment)
+        public UsuariosController(
+            IUsuarioRepositorio usuarioRepositorio,
+            IFuncaoRepositorio funcaoRepositorio,
+            IWebHostEnvironment webHostEnvironment)
         {
             _usuarioRepositorio = usuarioRepositorio;
+            _funcaoRepositorio = funcaoRepositorio;
             _webHostEnvironment = webHostEnvironment;
         }
         public async Task<IActionResult> Index()
@@ -192,6 +197,72 @@ namespace GerenciadorCondominios.Controllers
             await _usuarioRepositorio.AtualizarUsuario(usuario);
 
             return Json(true);
+        }
+        [HttpGet]
+        public async Task<IActionResult> GerenciarUsuario(string usuarioId, string nome)
+        {
+            if (usuarioId == null)
+                return NotFound();
+
+            TempData["usuarioId"] = usuarioId;
+            ViewBag.Nome = nome;
+            Usuario usuario = await _usuarioRepositorio.PegarPeloId(usuarioId);
+            if (usuario == null)
+                return NotFound();
+
+            List<FuncaoUsuariosViewModel> viewModel = new List<FuncaoUsuariosViewModel>();
+
+            foreach (Funcao funcao in await _funcaoRepositorio.PegarTodos())
+            {
+                FuncaoUsuariosViewModel model = new FuncaoUsuariosViewModel
+                {
+                    FuncaoId = funcao.Id,
+                    Nome = funcao.Name,
+                    Descricao = funcao.Descricao
+                };
+
+                model.IsSelected = await _usuarioRepositorio.VerificarSeUsuarioEstaEmFuncao(usuario, funcao.Name);
+
+                viewModel.Add(model);
+            };
+
+            return View(viewModel);
+        }
+        [HttpPost]
+        public async Task<IActionResult> GerenciarUsuarios(List<FuncaoUsuariosViewModel> model)
+        {
+            string usuarioId = TempData["usuarioId"].ToString();
+            Usuario usuario = await _usuarioRepositorio.PegarPeloId(usuarioId);
+
+            if (usuario == null)
+                return NotFound();
+
+            IEnumerable<string> funcoes = await _usuarioRepositorio.PegarFuncoesUsuario(usuario);
+
+            IdentityResult resultado = await _usuarioRepositorio.RemoverFuncoesUsuario(usuario, funcoes);
+
+            if (!resultado.Succeeded)
+            {
+                ModelState.AddModelError("", "Não foi possível atualizar as funções do usuário");
+                return View("GerenciarUsuario", usuarioId);
+            }
+
+            resultado = await _usuarioRepositorio.IncluirUsuarioEmFuncoes(usuario,
+                model.Where(x => x.IsSelected == true).Select(x => x.Nome));
+
+
+            if (!resultado.Succeeded)
+            {
+                ModelState.AddModelError("", "Não foi possível atualizar as funções do usuário");
+                return View("GerenciarUsuario", usuarioId);
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        public async Task<IActionResult> MinhasInformacoes()
+        {
+            return View(await _usuarioRepositorio.PegarUsuarioPeloNome(User));
         }
     }
 }
